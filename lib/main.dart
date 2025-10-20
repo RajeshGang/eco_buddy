@@ -260,11 +260,12 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _InfoCard(
             title: 'Prototype Goals',
-            body:
-                '• Validate if points & levels feel motivating.
+            body: '''
+• Validate if points & levels feel motivating.
 • Check if scan->points flow is clear.
 • Test clarity of linking & rewards.
-• Gather feedback on reward values & tiers.',
+• Gather feedback on reward values & tiers.
+''',
           ),
         ],
       ),
@@ -400,8 +401,7 @@ class _ScanScreenState extends State<ScanScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Receipt Detected'),
-        content: Text('Detected barcode: $code
-Award simulated +$pts pts?'),
+        content: Text('Detected barcode: $code\nAward simulated +$pts pts?'),
         actions: [
           TextButton(
             onPressed: () {
@@ -449,9 +449,11 @@ Award simulated +$pts pts?'),
           child: Stack(
             children: [
               MobileScanner(
-                allowDuplicates: false,
+                controller: MobileScannerController(
+                  detectionSpeed: DetectionSpeed.noDuplicates, // replaces allowDuplicates:false
+                ), 
                 onDetect: _onDetect,
-              ),
+              ),         
               Positioned(
                 top: 32,
                 left: 16,
@@ -699,4 +701,19 @@ class RewardVoucher {
   final Reward reward;
   final String code;
   RewardVoucher({required this.reward, required this.code});
+}
+
+class _HintCard extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  const _HintCard({super.key, required this.text, this.icon = Icons.info_outline});
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(text),
+      ),
+    );
+  }
 }
