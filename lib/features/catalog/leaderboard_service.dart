@@ -33,27 +33,53 @@ class LeaderboardEntry {
 class LeaderboardService {
   final _db = FirebaseFirestore.instance;
 
-  /// Update user's leaderboard entry after a purchase
-  Future<void> updateUserScore(String uid, int pointsToAdd) async {
+  /// Update user's leaderboard entry - CLIENT SIDE (no Cloud Functions needed!)
+  Future<void> updateUserScore(int pointsToAdd) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final leaderboardRef = _db.collection('leaderboard').doc(uid);
+    final leaderboardRef = _db.collection('leaderboard').doc(user.uid);
     
-    await _db.runTransaction((transaction) async {
-      final snapshot = await transaction.get(leaderboardRef);
+    try {
+      await _db.runTransaction((transaction) async {
+        final snapshot = await transaction.get(leaderboardRef);
+        
+        int currentPoints = 0;
+        if (snapshot.exists) {
+          currentPoints = (snapshot.data()?['totalPoints'] as num?)?.toInt() ?? 0;
+        }
+        
+        transaction.set(leaderboardRef, {
+          'displayName': user.displayName ?? user.email ?? 'Anonymous',
+          'totalPoints': currentPoints + pointsToAdd,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
       
-      int currentPoints = 0;
-      if (snapshot.exists) {
-        currentPoints = (snapshot.data()?['totalPoints'] as num?)?.toInt() ?? 0;
-      }
-      
-      transaction.set(leaderboardRef, {
-        'displayName': user.displayName ?? user.email ?? 'Anonymous',
-        'totalPoints': currentPoints + pointsToAdd,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    });
+      print('✅ Added $pointsToAdd points to leaderboard');
+    } catch (e) {
+      print('❌ Error updating leaderboard: $e');
+    }
+  }
+
+  /// Manually calculate and award points for a purchase score
+  Future<void> awardPointsForPurchase(double purchaseScore) async {
+    if (purchaseScore <= 0) return;
+    
+    // Convert score to points (1 point per score point)
+    final points = purchaseScore.round();
+    
+    // Award bonus points for high scores
+    int bonusPoints = 0;
+    if (purchaseScore >= 90) {
+      bonusPoints = 20; // Excellent!
+    } else if (purchaseScore >= 75) {
+      bonusPoints = 10; // Great!
+    } else if (purchaseScore >= 60) {
+      bonusPoints = 5; // Good!
+    }
+    
+    await updateUserScore(points + bonusPoints);
   }
 
   /// Get top N users on leaderboard
@@ -70,24 +96,49 @@ class LeaderboardService {
 
   /// Get current user's rank
   Future<int?> getUserRank(String uid) async {
-    final userDoc = await _db.collection('leaderboard').doc(uid).get();
-    if (!userDoc.exists) return null;
+    try {
+      final userDoc = await _db.collection('leaderboard').doc(uid).get();
+      if (!userDoc.exists) return null;
 
-    final userPoints = (userDoc.data()?['totalPoints'] as num?)?.toInt() ?? 0;
+      final userPoints = (userDoc.data()?['totalPoints'] as num?)?.toInt() ?? 0;
 
-    final higherCount = await _db
-        .collection('leaderboard')
-        .where('totalPoints', isGreaterThan: userPoints)
-        .count()
-        .get();
+      final higherCount = await _db
+          .collection('leaderboard')
+          .where('totalPoints', isGreaterThan: userPoints)
+          .count()
+          .get();
 
-    return (higherCount.count ?? 0) + 1;
+      return (higherCount.count ?? 0) + 1;
+    } catch (e) {
+      print('Error getting user rank: $e');
+      return null;
+    }
   }
 
   /// Get user's current points
   Future<int> getUserPoints(String uid) async {
-    final doc = await _db.collection('leaderboard').doc(uid).get();
-    if (!doc.exists) return 0;
-    return (doc.data()?['totalPoints'] as num?)?.toInt() ?? 0;
+    try {
+      final doc = await _db.collection('leaderboard').doc(uid).get();
+      if (!doc.exists) return 0;
+      return (doc.data()?['totalPoints'] as num?)?.toInt() ?? 0;
+    } catch (e) {
+      print('Error getting user points: $e');
+      return 0;
+    }
+  }
+  
+  /// Initialize user on leaderboard if they don't exist
+  Future<void> initializeUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    
+    final doc = await _db.collection('leaderboard').doc(user.uid).get();
+    if (!doc.exists) {
+      await _db.collection('leaderboard').doc(user.uid).set({
+        'displayName': user.displayName ?? user.email ?? 'Anonymous',
+        'totalPoints': 0,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+    }
   }
 }
