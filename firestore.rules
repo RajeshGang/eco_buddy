@@ -1,35 +1,9 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() { return request.auth != null; }
-    
-    // User private data
-    match /users/{uid} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
-      match /purchases/{doc} { 
-        allow read, write: if isSignedIn() && request.auth.uid == uid; 
-      }
-      match /aggregates/{col}/{doc} { 
-        allow read: if isSignedIn() && request.auth.uid == uid; 
-      }
-    }
-    
-    // Public leaderboard - anyone signed in can read, only owner can write their own score
-    match /leaderboard/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == uid;
-    }
-    
-    // Catalog data - read-only for everyone
-    match /catalog/{document=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // Score versions - read-only for everyone
-    match /score_versions/{id} {
-      allow read: if true;
-      allow write: if false;
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
