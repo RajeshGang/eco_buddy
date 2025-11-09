@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1009548471879',
     projectId: 'ecobuddy-153ba',
     storageBucket: 'ecobuddy-153ba.firebasestorage.app',
+    androidClientId: '1009548471879-qggiljg466ah42u2c2otvtmu9ovkun94.apps.googleusercontent.com',
+    iosClientId: '1009548471879-170859ckeqsnu86n4rpni623iimh9ied.apps.googleusercontent.com',
     iosBundleId: 'com.example.ecoDemo',
   );
 

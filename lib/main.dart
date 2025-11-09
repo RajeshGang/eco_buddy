@@ -3,27 +3,42 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-// NEW: feature screens
-import 'features/scan/barcode_scanner_screen.dart';
-import 'features/scan/receipt_ocr_screen.dart';
+// ---- Auth (you added these files earlier) ----
+import 'features/auth/auth_gate.dart';
+import 'features/auth/profile_screen.dart';
+
+// ---- Trends (works on web & mobile) ----
 import 'features/stats/trends_screen.dart';
 
-void main() async {
+// ---- Conditional imports: real mobile screens vs web stubs ----
+import 'features/scan/barcode_scanner_screen_stub.dart'
+  if (dart.library.io) 'features/scan/barcode_scanner_screen_mobile.dart';
+import 'features/scan/receipt_ocr_screen_stub.dart'
+  if (dart.library.io) 'features/scan/receipt_ocr_screen_mobile.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  // We only init Firebase on mobile. Web config can be added later.
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
   runApp(const EcoSustainApp());
 }
 
 class EcoSustainApp extends StatelessWidget {
   const EcoSustainApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'EcoSustain',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.green),
-      home: const EcoNavScaffold(),
+      // If web is not configured, show a friendly page instead of crashing.
+      home: kIsWeb ? const _WebNotConfigured() : const AuthGate(child: EcoNavScaffold()),
     );
   }
 }
@@ -46,28 +61,22 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      // Home
-      _HomeLanding(onGoScan: () => setState(() => _index = 1), onGoReceipt: () => setState(() => _index = 2)),
-      // Scan (barcode)
-      _mobileCameraSupported
-          ? const BarcodeScannerScreen()
-          : const _UnsupportedPlaceholder(feature: 'Barcode Scanner'),
-      // Receipt OCR
-      _mobileCameraSupported
-          ? const ReceiptOcrScreen()
-          : const _UnsupportedPlaceholder(feature: 'Receipt OCR'),
-      // Progress (uses Firestore stream; replace "demo" with your signed-in uid when Auth is wired)
+      const _HomeLanding(),
+      _mobileCameraSupported ? const BarcodeScannerScreen()
+                             : const _UnsupportedPlaceholder(feature: 'Barcode Scanner'),
+      _mobileCameraSupported ? const ReceiptOcrScreen()
+                             : const _UnsupportedPlaceholder(feature: 'Receipt OCR'),
+      // Replace 'demo' with your auth UID once you plumb it through (or read from FirebaseAuth)
       const TrendsScreen(uid: 'demo'),
-      // Profile (placeholder)
-      const _ProfilePlaceholder(),
+      const ProfileScreen(),
     ];
 
-    final items = const [
-      BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-      BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
-      BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Receipts'),
-      BottomNavigationBarItem(icon: Icon(Icons.trending_up), label: 'Progress'),
-      BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+    final destinations = const [
+      NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
+      NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
+      NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Receipts'),
+      NavigationDestination(icon: Icon(Icons.trending_up), label: 'Progress'),
+      NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
     ];
 
     return Scaffold(
@@ -75,16 +84,14 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: items.map((e) => NavigationDestination(icon: e.icon!, label: e.label!)).toList(),
+        destinations: destinations,
       ),
     );
   }
 }
 
 class _HomeLanding extends StatelessWidget {
-  final VoidCallback onGoScan;
-  final VoidCallback onGoReceipt;
-  const _HomeLanding({super.key, required this.onGoScan, required this.onGoReceipt});
+  const _HomeLanding({super.key});
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -144,10 +151,24 @@ class _UnsupportedPlaceholder extends StatelessWidget {
   }
 }
 
-class _ProfilePlaceholder extends StatelessWidget {
-  const _ProfilePlaceholder({super.key});
+class _WebNotConfigured extends StatelessWidget {
+  const _WebNotConfigured({super.key});
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Profile (coming soon)'));
+    return Scaffold(
+      appBar: AppBar(title: const Text('EcoSustain (Web)')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Web Firebase isn’t configured yet.\n\n'
+            '✅ Android/iOS are ready. Run on a phone or simulator.\n\n'
+            'If you want Web later, add a Web app in Firebase,\n'
+            'then run: flutterfire configure --platforms=web,android,ios',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
   }
 }
