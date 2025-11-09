@@ -3,12 +3,13 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-// ---- Auth (you added these files earlier) ----
+// ---- Auth ----
 import 'features/auth/auth_gate.dart';
 import 'features/auth/profile_screen.dart';
 
-// ---- Trends (works on web & mobile) ----
+// ---- Trends & Leaderboard ----
 import 'features/stats/trends_screen.dart';
+import 'features/catalog/leaderboard_screen.dart';
 
 // ---- Conditional imports: real mobile screens vs web stubs ----
 import 'features/scan/barcode_scanner_screen_stub.dart'
@@ -66,8 +67,8 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
                              : const _UnsupportedPlaceholder(feature: 'Barcode Scanner'),
       _mobileCameraSupported ? const ReceiptOcrScreen()
                              : const _UnsupportedPlaceholder(feature: 'Receipt OCR'),
-      // Replace 'demo' with your auth UID once you plumb it through (or read from FirebaseAuth)
-      const TrendsScreen(uid: 'demo'),
+      const TrendsScreen(uid: 'demo'), // Will use actual UID in production
+      const LeaderboardScreen(),
       const ProfileScreen(),
     ];
 
@@ -76,6 +77,7 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
       NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Receipts'),
       NavigationDestination(icon: Icon(Icons.trending_up), label: 'Progress'),
+      NavigationDestination(icon: Icon(Icons.leaderboard), label: 'Leaderboard'),
       NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
     ];
 
@@ -111,6 +113,11 @@ class _HomeLanding extends StatelessWidget {
           title: 'Track Progress',
           subtitle: 'See monthly trends and improvements over time.',
           icon: Icons.trending_up,
+        ),
+        _HeroCard(
+          title: 'Compete on Leaderboard',
+          subtitle: 'See how your sustainability compares with others.',
+          icon: Icons.leaderboard,
         ),
       ],
     );
@@ -161,7 +168,7 @@ class _WebNotConfigured extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'Web Firebase isn’t configured yet.\n\n'
+            'Web Firebase isnt configured yet.\n\n'
             '✅ Android/iOS are ready. Run on a phone or simulator.\n\n'
             'If you want Web later, add a Web app in Firebase,\n'
             'then run: flutterfire configure --platforms=web,android,ios',
