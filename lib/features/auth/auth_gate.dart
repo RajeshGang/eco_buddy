@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'sign_in_page.dart';
 
 /// Shows [child] when signed in; otherwise shows the SignInPage.
+/// Handles authentication state changes and displays appropriate UI.
 class AuthGate extends StatelessWidget {
   final Widget child;
   const AuthGate({super.key, required this.child});
