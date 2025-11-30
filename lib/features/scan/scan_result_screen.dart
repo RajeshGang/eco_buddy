@@ -33,6 +33,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   bool _loading = false;
   bool _pointsAwarded = false;
   String? _error;
+  int _recommendationCount = 3;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         productName: widget.productName,
         category: widget.category,
         currentScore: widget.score,
+        count: _recommendationCount,
       );
 
       if (mounted) {
@@ -327,11 +329,30 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             children: [
               const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 28),
               const SizedBox(width: 8),
-              Text(
-                'Better Alternatives',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Better Alternatives',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+              ),
+              DropdownButton<int>(
+                value: _recommendationCount,
+                items: [3, 5, 7, 10].map((count) {
+                  return DropdownMenuItem<int>(
+                    value: count,
+                    child: Text('$count suggestions'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _recommendationCount = value;
+                    });
+                    _loadRecommendations();
+                  }
+                },
               ),
             ],
           ),
@@ -378,9 +399,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
               ),
             )
           else if (_recommendations != null && _recommendations!.isNotEmpty)
-            ..._recommendations!.map((rec) => _RecommendationCard(
-                  recommendation: rec,
+            ..._recommendations!.asMap().entries.map((entry) => _RecommendationCard(
+                  recommendation: entry.value,
                   currentScore: widget.score,
+                  index: entry.key,
                 ))
           else
             const Card(
@@ -766,19 +788,29 @@ class _ScoreBreakdownCardState extends State<_ScoreBreakdownCard> {
 class _RecommendationCard extends StatelessWidget {
   final ProductRecommendation recommendation;
   final double currentScore;
+  final int index;
 
   const _RecommendationCard({
     required this.recommendation,
     required this.currentScore,
+    required this.index,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final improvement = recommendation.estimatedScore - currentScore;
+    final isSponsored = index < 2;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSponsored
+            ? BorderSide(color: Colors.amber[600]!, width: 2)
+            : BorderSide.none,
+      ),
+      elevation: isSponsored ? 4 : 1,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -788,11 +820,42 @@ class _RecommendationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    recommendation.productName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isSponsored) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.amber[600]!),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star, size: 14, color: Colors.amber[900]),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Sponsored',
+                                style: TextStyle(
+                                  color: Colors.amber[900],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      Text(
+                        recommendation.productName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -825,6 +888,32 @@ class _RecommendationCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 12),
+            if (recommendation.price != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green[200]!),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.attach_money, size: 18, color: Colors.green[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '\$${recommendation.price!.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.green[900],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Text(
               recommendation.description,
               style: theme.textTheme.bodyMedium,
