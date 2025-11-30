@@ -149,7 +149,7 @@ class _ReceiptOcrScreenState extends State<ReceiptOcrScreen> {
   }
 
   Widget _buildMainView() {
-    return Center(
+    return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -255,6 +255,8 @@ class _ReceiptOcrScreenState extends State<ReceiptOcrScreen> {
                 ),
               ),
             ),
+            // Add bottom padding to prevent cutoff by navigation bar
+            const SizedBox(height: 24),
           ],
         ),
       ),

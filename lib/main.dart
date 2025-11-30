@@ -10,7 +10,6 @@ import 'features/auth/profile_screen.dart';
 // ---- Trends & Leaderboard ----
 import 'features/stats/trends_screen.dart';
 import 'features/catalog/leaderboard_screen.dart';
-import 'features/catalog/test_points_screen.dart';
 
 // ---- Conditional imports: real mobile screens vs web stubs ----
 import 'features/scan/barcode_scanner_screen_stub.dart'
@@ -67,7 +66,6 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
   @override
   Widget build(BuildContext context) {
     final pages = <Widget>[
-      const TestPointsScreen(),
       const _HomeLanding(),
       _mobileCameraSupported ? const BarcodeScannerScreen()
                              : const _UnsupportedPlaceholder(feature: 'Barcode Scanner'),
@@ -79,7 +77,6 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
     ];
 
     final destinations = const [
-      NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Demo'),
       NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
       NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
       NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Receipts'),
