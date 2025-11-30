@@ -73,7 +73,7 @@ class _EcoNavScaffoldState extends State<EcoNavScaffold> {
                              : const _UnsupportedPlaceholder(feature: 'Barcode Scanner'),
       _mobileCameraSupported ? const ReceiptOcrScreen()
                              : const _UnsupportedPlaceholder(feature: 'Receipt OCR'),
-      const TrendsScreen(uid: 'demo'), // Will use actual UID in production
+      const TrendsScreen(),
       const LeaderboardScreen(),
       const ProfileScreen(),
     ];

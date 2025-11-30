@@ -31,9 +31,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   final _leaderboardService = LeaderboardService();
   List<ProductRecommendation>? _recommendations;
   bool _loading = false;
+  bool _loadingMore = false;
   bool _pointsAwarded = false;
   String? _error;
-  int _recommendationCount = 3;
+  int _displayedCount = 3;
 
   @override
   void initState() {
@@ -42,31 +43,63 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     _awardPoints();
   }
 
-  Future<void> _loadRecommendations() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _loadRecommendations({bool loadMore = false}) async {
+    if (loadMore) {
+      setState(() {
+        _loadingMore = true;
+        _error = null;
+      });
+    } else {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _displayedCount = 3;
+      });
+    }
 
     try {
-      final recs = await _aiService.getRecommendations(
-        productName: widget.productName,
-        category: widget.category,
-        currentScore: widget.score,
-        count: _recommendationCount,
-      );
+      if (loadMore && _recommendations != null) {
+        // Load 3 more recommendations
+        final recs = await _aiService.getRecommendations(
+          productName: widget.productName,
+          category: widget.category,
+          currentScore: widget.score,
+          count: _displayedCount + 3,
+        );
 
-      if (mounted) {
-        setState(() {
-          _recommendations = recs;
-          _loading = false;
-        });
+        if (mounted) {
+          setState(() {
+            // Append new recommendations, avoiding duplicates
+            final existingNames = _recommendations!.map((r) => r.productName).toSet();
+            final newRecs = recs.where((r) => !existingNames.contains(r.productName)).take(3).toList();
+            _recommendations = [..._recommendations!, ...newRecs];
+            _displayedCount = _recommendations!.length;
+            _loadingMore = false;
+          });
+        }
+      } else {
+        // Initial load
+        final recs = await _aiService.getRecommendations(
+          productName: widget.productName,
+          category: widget.category,
+          currentScore: widget.score,
+          count: 3,
+        );
+
+        if (mounted) {
+          setState(() {
+            _recommendations = recs;
+            _displayedCount = recs.length;
+            _loading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
           _loading = false;
+          _loadingMore = false;
         });
       }
     }
@@ -329,30 +362,11 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             children: [
               const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 28),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Better Alternatives',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                'Better Alternatives',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-              ),
-              DropdownButton<int>(
-                value: _recommendationCount,
-                items: [3, 5, 7, 10].map((count) {
-                  return DropdownMenuItem<int>(
-                    value: count,
-                    child: Text('$count suggestions'),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _recommendationCount = value;
-                    });
-                    _loadRecommendations();
-                  }
-                },
               ),
             ],
           ),
@@ -398,12 +412,32 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                 ),
               ),
             )
-          else if (_recommendations != null && _recommendations!.isNotEmpty)
+          else if (_recommendations != null && _recommendations!.isNotEmpty) ...[
             ..._recommendations!.asMap().entries.map((entry) => _RecommendationCard(
                   recommendation: entry.value,
                   currentScore: widget.score,
                   index: entry.key,
-                ))
+                )),
+            const SizedBox(height: 16),
+            if (!_loadingMore)
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () => _loadRecommendations(loadMore: true),
+                  icon: const Icon(Icons.expand_more),
+                  label: const Text('Show More'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              )
+            else
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+          ]
           else
             const Card(
               child: Padding(
